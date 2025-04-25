@@ -8,6 +8,7 @@ click-plugins==1.1.1
 click-repl==0.3.0
 Django==5.2
 django_celery_results==2.6.0
+djangorestframework==3.16.0
 kombu==5.5.3
 numpy==2.2.5
 pandas==2.2.3
