@@ -18,3 +18,6 @@ class LoanApplySerializer(serializers.Serializer):
 class MakePaymentSerializer(serializers.Serializer):
     loan_id = serializers.UUIDField()
     amount = serializers.DecimalField(max_digits=10, decimal_places=2)
+
+class GetStatementSerializer(serializers.Serializer):
+    loan_id = serializers.UUIDField()

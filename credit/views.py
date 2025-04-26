@@ -2,7 +2,7 @@ from django.shortcuts import render
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
-from .serializers import RegisterUserSerializer, LoanApplySerializer, MakePaymentSerializer
+from .serializers import RegisterUserSerializer, LoanApplySerializer, MakePaymentSerializer, GetStatementSerializer
 from .models import User, Loan, CreditScore, Billing, DuePayment
 from .tasks import calculate_credit_score_task
 from datetime import timedelta, date
@@ -129,4 +129,42 @@ class MakePaymentsView(APIView):
                             "error": None
                         }, status=status.HTTP_200_OK)
             return Response({'error': 'All dues are already paid for this loan'}, status=status.HTTP_400_BAD_REQUEST)
+        return Response({'error': serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
+
+class GetStatementView(APIView):
+    def post(self, request):
+        serializer = GetStatementSerializer(data=request.data)
+        if serializer.is_valid():
+            loan_id = serializer.validated_data['loan_id']
+            try:
+                loan = Loan.objects.get(id=loan_id)
+            except Loan.DoesNotExist:
+                return Response({'error': 'Loan not found'}, status=status.HTTP_400_BAD_REQUEST)
+
+            billings = Billing.objects.filter(loan=loan).order_by('billing_date')
+
+            past_transactions = []
+            upcoming_transactions = []
+
+            for billing in billings:
+                due_payment = DuePayment.objects.filter(billing=billing).first()
+
+                if due_payment and due_payment.status == 'paid':
+                    past_transactions.append({
+                        "date": billing.billing_date,
+                        "principal": billing.principal_balance,
+                        "interest": billing.interest_accrued,
+                        "amount_paid": due_payment.paid_amount
+                    })
+                else:
+                    upcoming_transactions.append({
+                        "date": billing.billing_date,
+                        "amount_due": billing.min_due
+                    })
+
+            return Response({
+                "past_transactions": past_transactions,
+                "upcoming_transactions": upcoming_transactions,
+                "error": None
+            }, status=status.HTTP_200_OK)
         return Response({'error': serializer.errors}, status=status.HTTP_400_BAD_REQUEST)

@@ -1,8 +1,9 @@
 from django.urls import path
-from .views import RegisterUserView, ApplyLoanView, MakePaymentsView
+from .views import RegisterUserView, ApplyLoanView, MakePaymentsView, GetStatementView
 
 urlpatterns = [
     path('register-user/', RegisterUserView.as_view(), name='register-user'),
     path('apply-loan/', ApplyLoanView.as_view(), name='apply-loan'),
     path('make-payment/', MakePaymentsView.as_view(), name='make-payment'),
+    path('get-statement/', GetStatementView.as_view(), name='get-statement'),
 ]
