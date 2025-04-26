@@ -4,11 +4,15 @@ import pandas as pd
 from decimal import Decimal
 from django.utils import timezone
 import os
+
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 @shared_task
-def calculate_credit_score_task(aadhar_id, user_id):
+def calculate_credit_score_task(user_id):
     try:
+        user = User.objects.get(id=user_id)
+        aadhar_id = user.aadhar_id
+
         # Load the CSV file
         csv_path = os.path.join(BASE_DIR, 'transactions.csv')
         df = pd.read_csv(csv_path)
@@ -30,7 +34,7 @@ def calculate_credit_score_task(aadhar_id, user_id):
             score = 300 + int((balance - 10000) / 15000) * 10
             score = min(score, 900)
 
-        user = User.objects.get(id=user_id)
+        # No need to fetch user again
         CreditScore.objects.update_or_create(user=user, defaults={'score': score, 'calculated_at': timezone.now()})
     except Exception as e:
         print(f"Error calculating score for user {user_id}: {e}")

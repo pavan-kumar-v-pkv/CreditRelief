@@ -14,7 +14,7 @@ class RegisterUserView(APIView):
         serializer = RegisterUserSerializer(data=request.data)
         if serializer.is_valid():
             user = serializer.save()
-            calculate_credit_score_task.delay(str(user.aadhar_id), str(user.id))
+            calculate_credit_score_task.delay(str(user.id))
             return Response({
                 'unique_user_id': user.id,
                 'error': None
