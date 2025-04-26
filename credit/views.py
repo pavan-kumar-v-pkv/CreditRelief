@@ -154,9 +154,13 @@ class GetStatementView(APIView):
                         "amount_paid": due_payment.paid_amount
                     })
                 else:
+                    remaining_due = billing.min_due
+                    if due_payment:
+                        remaining_due = billing.min_due - due_payment.paid_amount
+                        remaining_due = max(Decimal('0.00'), remaining_due) # To avoid negative numbers
                     upcoming_transactions.append({
                         "date": billing.billing_date,
-                        "amount_due": billing.min_due
+                        "amount_due": round(remaining_due, 2)
                     })
 
             return Response({

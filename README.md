@@ -19,7 +19,7 @@ This backend uses:
 
 * **Django REST Framework**
 * **Celery + Redis** for async credit score calculation
-* **Custom cron job** for billing generation
+* **Django-Celery-Beat** for automatic daily cron job scheduling
 
 ---
 
