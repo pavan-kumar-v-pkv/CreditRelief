@@ -27,6 +27,9 @@ This backend uses:
 
 1. Clone the repository (private)
 2. Create and activate a virtual environment
+```bash
+source env/bin/activate
+```
 3. Install dependencies:
 
 ```bash
