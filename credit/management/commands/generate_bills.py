@@ -6,4 +6,4 @@ class Command(BaseCommand):
 
     def handle(self, *args, **kwargs):
         generate_billing_for_today()
-        self.stdout.write(self.style.SUCCESS('BILLING generate successfully for today'))
+        self.stdout.write(self.style.SUCCESS('BILLING generated successfully for today'))

@@ -65,6 +65,11 @@ python manage.py runserver
 ```bash
 celery -A creditrelief worker --loglevel=info
 ```
+8. Test APIs using Postman / curl commands.
+9. Run billing manually (for test purposes):
+```bash
+python manage.py generate_bills
+```
 
 ---
 
@@ -79,15 +84,24 @@ celery -A creditrelief worker --loglevel=info
 
 ---
 
-## Important Details
+## Important Details (for clarification) 
 
-* Credit Score calculated from transactions data (CSV)
-* Billing generated every 30 days
-* Daily interest accrued, minimum due calculated
-* Payment validations:
-  * No duplicate payments
-  * Past dues must be cleared before future billing
-* Statement shows both paid EMIs and future dues
+* Bills are generated every 30 days after loan disbursement.
+* When billing is generated:
+  * Due amount (min_due) is exactly equal to the EMI shown during loan application.
+* This ensures:
+  * `/api/apply-loan/` EMI and billing amounts match exactly.
+* At the time of testing, only 1 EMI will be visible in the system.
+  * Subsequent EMIs will appear only after 60 days, 90 days, etc., according to 30-day billing cycle. (Have to run `python manage.py generate_bills` manually again)
+  * This can be updated.
+* Interest Rate is treated directly as monthly as per assignment expectations. (12% → 0.12 after dividing by 100)
+* Partial Payments:
+  * Allowed.
+  * Remaining due amount shown in API response.
+* Transactions CSV:
+  * Aadhar ID provided during registration should match an entry in the `transactions.csv` file.
+  * Otherwise, default credit score = 300 (loan rejected if score < 450).
+
 
 ---
 
