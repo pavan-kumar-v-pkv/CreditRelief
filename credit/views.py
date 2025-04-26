@@ -2,10 +2,10 @@ from django.shortcuts import render
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
-from .serializers import RegisterUserSerializer, LoanApplySerializer
-from .models import User, Loan, CreditScore
+from .serializers import RegisterUserSerializer, LoanApplySerializer, MakePaymentSerializer
+from .models import User, Loan, CreditScore, Billing, DuePayment
 from .tasks import calculate_credit_score_task
-from datetime import timedelta
+from datetime import timedelta, date
 from uuid import UUID
 from decimal import Decimal
 
@@ -82,3 +82,51 @@ class ApplyLoanView(APIView):
                 "error": None
             })
         return Response({"error": serializer.errors}, status=400)
+
+class MakePaymentsView(APIView):
+    def post(self, request):
+        serializer = MakePaymentSerializer(data=request.data)
+        if serializer.is_valid():
+            data = serializer.validated_data
+            loan_id = data['loan_id']
+            amount = data['amount']
+
+            # Find all billing entries for the loan
+            billings = Billing.objects.filter(loan__id=loan_id).order_by('billing_date')
+
+            if not billings.exists():
+                return Response({'error': 'No billing found for this loan'}, status=status.HTTP_400_BAD_REQUEST)
+
+            # Iterate over billings to find unpaid billing
+            for billing in billings:
+                due_payment, created = DuePayment.objects.get_or_create(billing=billing)
+
+                if due_payment.status == 'pending':
+                    if due_payment.paid_amount > 0:
+                        return Response({'error': 'Previous billing cycle payment is still incomplete'}, status=status.HTTP_400_BAD_REQUEST)
+
+                    if amount >= billing.min_due:
+                        due_payment.paid_amount = billing.min_due
+                        due_payment.status = 'paid'
+                        due_payment.payment_date = date.today()
+                        due_payment.save()
+                        return Response({
+                            "billing_id": billing.id,
+                            "amount_paid": str(billing.min_due),
+                            "status": "paid",
+                            "error": None
+                        }, status=status.HTTP_200_OK)
+
+                    else:
+                        due_payment.paid_amount += amount
+                        due_payment.status = 'pending'
+                        due_payment.payment_date = None
+                        due_payment.save()
+                        return Response({
+                            "billing_id": billing.id,
+                            "amount_paid": str(amount),
+                            "status": "partial payment",
+                            "error": None
+                        }, status=status.HTTP_200_OK)
+            return Response({'error': 'All dues are already paid for this loan'}, status=status.HTTP_400_BAD_REQUEST)
+        return Response({'error': serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
