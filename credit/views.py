@@ -14,7 +14,7 @@ class RegisterUserView(APIView):
         serializer = RegisterUserSerializer(data=request.data)
         if serializer.is_valid():
             user = serializer.save()
-            calculate_credit_score_task.delay(str(user.id))
+            calculate_credit_score_task.delay(str(user.aadhar_id), str(user.id))
             return Response({
                 'unique_user_id': user.id,
                 'error': None
@@ -83,6 +83,7 @@ class ApplyLoanView(APIView):
             })
         return Response({"error": serializer.errors}, status=400)
 
+
 class MakePaymentsView(APIView):
     def post(self, request):
         serializer = MakePaymentSerializer(data=request.data)
@@ -102,34 +103,30 @@ class MakePaymentsView(APIView):
                 due_payment, created = DuePayment.objects.get_or_create(billing=billing)
 
                 if due_payment.status == 'pending':
-                    if due_payment.paid_amount > 0:
-                        return Response({'error': 'Previous billing cycle payment is still incomplete'}, status=status.HTTP_400_BAD_REQUEST)
+                    # Add the payment to existing paid_amount
+                    due_payment.paid_amount += amount
 
-                    if amount >= billing.min_due:
-                        due_payment.paid_amount = billing.min_due
+                    if due_payment.paid_amount >= billing.min_due:
+                        due_payment.paid_amount = billing.min_due  # Do not exceed min_due
                         due_payment.status = 'paid'
                         due_payment.payment_date = date.today()
-                        due_payment.save()
-                        return Response({
-                            "billing_id": billing.id,
-                            "amount_paid": str(billing.min_due),
-                            "status": "paid",
-                            "error": None
-                        }, status=status.HTTP_200_OK)
 
-                    else:
-                        due_payment.paid_amount += amount
-                        due_payment.status = 'pending'
-                        due_payment.payment_date = None
-                        due_payment.save()
-                        return Response({
-                            "billing_id": billing.id,
-                            "amount_paid": str(amount),
-                            "status": "partial payment",
-                            "error": None
-                        }, status=status.HTTP_200_OK)
+                    due_payment.save()
+                    remaining_due = billing.min_due - due_payment.paid_amount
+                    remaining_due = max(Decimal('0.00'), remaining_due)  # to avoid negative
+
+                    return Response({
+                        "billing_id": billing.id,
+                        "amount_paid": str(due_payment.paid_amount),
+                        "remaining_due": str(remaining_due),
+                        "status": due_payment.status,
+                        "error": None
+                    }, status=status.HTTP_200_OK)
+
             return Response({'error': 'All dues are already paid for this loan'}, status=status.HTTP_400_BAD_REQUEST)
+
         return Response({'error': serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
+
 
 class GetStatementView(APIView):
     def post(self, request):

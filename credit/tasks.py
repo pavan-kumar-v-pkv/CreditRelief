@@ -7,11 +7,12 @@ import os
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 @shared_task
-def calculate_credit_score_task(user_id):
+def calculate_credit_score_task(aadhar_id, user_id):
     try:
+        # Load the CSV file
         csv_path = os.path.join(BASE_DIR, 'transactions.csv')
         df = pd.read_csv(csv_path)
-        df = df[df['user'] == user_id]
+        df = df[df['user'] == aadhar_id]
 
         balance = 0
         for _, row in df.iterrows():

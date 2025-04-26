@@ -7,19 +7,21 @@ def generate_billing_for_today():
     loans = Loan.objects.all()
 
     for loan in loans:
-        # Check if this loan needs billing
         loan_age_days = (today - loan.disbursement_date).days
         if loan_age_days > 0 and loan_age_days % 30 == 0:
-            principal_balance = loan.loan_amount
-            daily_interest_rate = loan.interest_rate / Decimal('365')
-            total_interest = principal_balance * daily_interest_rate * Decimal('30')
-            min_due = (principal_balance * Decimal('0.03')) + total_interest
+            # Calculate total interest over full term
+            total_interest = loan.loan_amount * (loan.interest_rate / Decimal('100')) * loan.term_period
+            # Total amount to repay (Principal + Interest)
+            total_payable = loan.loan_amount + total_interest
+            # EMI = total payable / number of months
+            emi = total_payable / loan.term_period
 
+            # Create Billing
             Billing.objects.create(
                 loan=loan,
                 billing_date=today,
-                due_date=today + timedelta(days=15),
-                principal_balance=principal_balance,
-                interest_accrued=round(total_interest, 2),
-                min_due=round(min_due, 2)
+                due_date=today + timedelta(days=15),  # 15 days grace period for payment
+                principal_balance=loan.loan_amount,  # Optional, just for record
+                interest_accrued=round(total_interest / loan.term_period, 2),  # per month interest
+                min_due=round(emi, 2)  # EMI amount
             )
