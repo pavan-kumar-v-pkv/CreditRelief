@@ -102,6 +102,13 @@ python manage.py generate_bills
   * Aadhar ID provided during registration should match an entry in the `transactions.csv` file.
   * Otherwise, default credit score = 300 (loan rejected if score < 450).
 
+* When a user makes a partial payment for a billing cycle,
+the entire billing amount (min_due) will continue to appear under upcoming_transactions in /api/get-statement/.
+* Partial payments are recorded internally but the due amount displayed remains the full EMI amount until it is fully paid.
+* Only after full payment of the billing’s min_due, the billing entry moves to past_transactions.
+* This ensures billing and due tracking is clean, simple, and avoids confusion with partial EMIs.
+* This behavior is designed based on Bright Money assignment PDF: "All due amounts must be repaid within the specified tenure."
+
 
 ---
 
