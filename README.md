@@ -33,10 +33,25 @@ This backend uses:
 pip install -r requirements.txt
 ```
 4. Set up Redis server (for Celery):
-```bash
-brew install redis
-brew services start redis
-```
+
+- **macOS users**:
+  ```bash
+  brew install redis
+  brew services start redis
+  ```
+
+- **Windows users**:
+  - Download Redis installer from: https://github.com/microsoftarchive/redis/releases
+  - Install Redis as a Windows Service.
+  - Start Redis server manually ot through services.msc.
+   
+- **Linux users**:
+  ```bash
+  sudo apt update
+  sudo api install redis-server
+  sudo systemctl start redis
+  ```
+
 5. Apply migrations:
 ```bash
 python manage.py makemigrations
