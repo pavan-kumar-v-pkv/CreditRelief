@@ -1,131 +1,80 @@
-# CreditRelief
+# CreditRelief 💳
 
-**Backend Django Application** for Credit Service Management.
+> Django REST API for credit lifecycle management — loan registration, EMI scheduling, async credit scoring, and statement generation.
 
----
+CreditRelief is a backend service that simulates a real-world credit management system: users register loans, the system calculates credit scores asynchronously via Celery, schedules EMI billing via cron, and generates monthly statements.
 
-## Project Overview
+## Features
 
-CreditRelief helps simulate:
+- **Loan lifecycle** — registration, approval, EMI schedule generation, repayment tracking
+- **Async credit scoring** — Celery worker processes credit score calculations off the request thread
+- **Automated billing** — Celery Beat cron job runs daily EMI billing
+- **REST API** — full DRF API for all loan and account operations
+- **Statement generation** — full loan statement with interest breakdown per period
 
-* User loan registrations
-* Credit score calculation based on account transactions
-* Loan application and EMI breakup
-* Monthly billing and interest calculation
-* EMI repayments and dues tracking
-* Full loan statement generation
+## Tech Stack
 
-This backend uses:
+| Layer | Technology |
+|---|---|
+| Framework | Django 4 + Django REST Framework |
+| Async tasks | Celery + Redis |
+| Scheduler | Django-Celery-Beat |
+| Database | SQLite (dev) / PostgreSQL (prod-ready) |
+| Auth | Django session + DRF token auth |
 
-* **Django REST Framework**
-* **Celery + Redis** for async credit score calculation
-* **Django-Celery-Beat** for automatic daily cron job scheduling
+## Architecture
 
----
-
-## How to Run the Project Locally
-
-1. Clone the repository (private)
-2. Create and activate a virtual environment
-```bash
-python3 -m venv env
-source env/bin/activate # Linux/Mac
-env\Scripts\activate     # Windows
 ```
-3. Install dependencies:
+creditrelief/
+├── credit/
+│   ├── models.py          # Loan, Account, Transaction, EMISchedule models
+│   ├── views.py           # DRF ViewSets
+│   ├── serializers.py     # Input/output serializers
+│   ├── tasks.py           # Celery tasks (credit score, billing)
+│   └── urls.py
+├── creditrelief/
+│   ├── settings.py
+│   └── celery.py          # Celery app config
+└── manage.py
+```
+
+## Setup
 
 ```bash
+git clone https://github.com/pavan-kumar-v-pkv/CreditRelief
+cd CreditRelief
+python -m venv env && source env/bin/activate
 pip install -r requirements.txt
-```
-4. Set up Redis server (for Celery):
 
-- **macOS users**:
-  ```bash
-  brew install redis
-  brew services start redis
-  ```
+# Start Redis (required for Celery)
+brew install redis && brew services start redis  # macOS
+# or: sudo apt install redis-server && sudo systemctl start redis
 
-- **Windows users**:
-  - Download Redis installer from: https://github.com/microsoftarchive/redis/releases
-  - Install Redis as a Windows Service.
-   
-- **Linux users**:
-  ```bash
-  sudo apt update
-  sudo api install redis-server
-  sudo systemctl start redis
-  ```
-
-5. Apply migrations:
-```bash
-python manage.py makemigrations
 python manage.py migrate
-```
-6. Start Django server:
-```bash
 python manage.py runserver
-```
-7. Start Celery worker:
-```bash
+
+# In separate terminals:
 celery -A creditrelief worker --loglevel=info
-```
-8. Start Celery Beat (for cron jobs):
-```bash
 celery -A creditrelief beat --loglevel=info
 ```
-9. Test APIs using Postman / curl commands.
-10. (Optional) Run billing manually for testing purposes):
-```bash
-python manage.py generate_bills
-```
 
----
+## Key API Endpoints
 
-## APIs Implemented
+| Method | Endpoint | Description |
+|---|---|---|
+| POST | `/api/loans/register/` | Register a new loan |
+| GET | `/api/loans/{id}/schedule/` | Get EMI schedule |
+| POST | `/api/loans/{id}/repay/` | Record a repayment |
+| GET | `/api/accounts/{id}/statement/` | Get full loan statement |
+| GET | `/api/accounts/{id}/credit-score/` | Get current credit score |
 
-| Endpoint                    | Description                                                       |
-|-----------------------------|-------------------------------------------------------------------|
-| `POST /api/register-user/`  | Register a new user, trigger async credit score calculation       |
-| `POST /api/apply-loan/`     | Apply for a loan against credit card after eligibility validation |
-| `POST /api/make-payment/`   | Make EMI payments, update dues                                    |
-| `POST /api/get-statement/`  | Fetch past and upcoming loan transactions                         |
+## How Async Scoring Works
 
----
+1. User registers a loan → API returns immediately
+2. A Celery task is queued to calculate credit score based on transaction history
+3. Score is persisted to the DB asynchronously
+4. Celery Beat triggers daily billing job at midnight to calculate dues and update EMI status
 
-## Important Details (for clarification) 
+## License
 
-* **Billing Generation**:
-  * Bills are generated every 30 days after loan disbursement.
-  * Cron job (Celery Beat) automatically triggers billing daily.
-  * Manual billing can also be triggered using `python manage.py generate_bills`.
-* **Billing Amount**:
-  * Due amount (min_due) = EMI shown at loan application.
-  * No extra hidden charges or recalculations.
-* **Interest Calculation**:
-  * Interest Rate is treated monthly as per assignment.
-  * 12% → 0.12 directly (divide by 100 once).
-* Partial Payments:
-  * Partial payments are accepted.
-  * Remaining due is shown properly in `/api/make-payment/` and `/api/get-statement/`.
-* **Statement Behavior**:
-  * If full EMI is not paid, upcoming_transactions show the pending amount.
-  * Once full EMI is cleared, the billing entry moves to past_transactions.
-  * Clear segregation between pending and paid bills.
-* **Credit Score Calculation**:
-  * Based on provided `transactions.csv` file.
-  * If aadhar_id matches, credit score is calculated.
-  * If no matching transaction found, default score is 300.
-  * Minimum credit score needed to apply for a loan: 450.
-
-### Important Testing Behavior (Clarification)
-
-* After partial payment, `/api/get-statement/` shows the remaining amount dynamically.
-* Until full EMI is paid, it stays in `upcoming_transactions`.
-* Only after full EMI is paid, it moves to `past_transactions`.
-* Bills for next month will appear only after 30 more days (next billing cycle).
-
----
-
-## Author
-
-**Pavan Kumar V**
+MIT
